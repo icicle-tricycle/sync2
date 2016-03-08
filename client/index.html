@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        "use strict";
+    
+        var canvas;
+        var ctx;
+        //our websocket connection
+        var socket; 
+		var draws = {};
+		
+		var squares = [];
+		var myIndex = 0;
+		
+		//16777215 = FFFFFF in hex, this is a random hex color
+		var myColor = '';
+		var animationID = 0;
+		var lastUpdate = Date.now();
+	
+        // Our square object to draw to the screen
+        // This holds all of the parameters of our square and will
+        // be synced from the server. When server updates come in
+        // we will update this object
+        var square = {
+            //last time this was updated so that we don't override it with a later time
+            //We would have to add logic to this code to not update if the new square packet is
+            //older than our last received one
+            lastUpdate: new Date().getTime(),
+            x: 0, //x position of our square
+            y: 0, //y position of our square
+			xSpd: 5,
+			ySpd: 5,
+            height: 100, //height of our square
+            width: 100, //width of our square
+			index: 0,
+			color: "#FFFFFF"
+        };
+        //an automated function to generate messages to send to the server
+        //Normally something like this would be invoked by user input
+        //such as clicking with the mouse, clicking a button, using WASD, etc
+        function updatePosition() {
+            //our request message to update the square's position by 10 and 5 pixels
+            //The variables in this message "xUpdate" and "yUpdate" 
+            //We know this because we know the server is accepting an xUpdate and yUpdate in
+            //its "movementUpdate" message listener. The names have to match on client and server
+            //for this to work correctly.
+            var message = {
+				squareIndex: myIndex
+            }
+            
+            //emit a movementUpdate message to the server and send our request data
+            socket.emit('movementUpdate', message);
+        }
+        
+        //redraw our square to the screen
+        function draw() {
+			console.log("draw called");
+			ctx.fillStyle = "#3070B0";
+			ctx.fillRect(0,0, canvas.width, canvas.height);
+			
+			console.log(squares);
+			squares.forEach(function(element,index,array)
+			{
+				//console.log();
+				ctx.fillStyle = element.color;
+				ctx.fillRect(element.x,element.y,element.width, element.height);
+			});
+
+			/*var draws = {};
+				
+			var keys = Object.keys(draws);
+			for(var i = 0; i < keys.length; i++)
+			{
+				console.log(draws);
+				var drawCall = draws[keys[i]];
+				console.log('x: ' + drawCall.x + ', y: ' + drawCall.y);
+				ctx.fillRect(drawCall.x,drawCall.y,drawCall.width, drawCall.height);
+			}*/
+        }
+        
+		function step()
+		{
+			var now = Date.now();
+			var dt = (now - lastUpdate);
+			console.log(dt);
+			lastUpdate = now;
+			// schedule a call to step()
+			//setInterval(step, 2500);
+			window.requestAnimationFrame(step);
+			
+			squares.forEach(function(element,index,array)
+			{
+				//console.log();
+				element.x += element.xSpd * dt/20;
+				element.y += element.ySpd * dt/20;
+				if(element.x<0)
+				{
+					element.x =0;
+					element.xSpd *=-1;
+				}
+				if(element.x>400)
+				{
+					element.x =400;
+					element.xSpd *=-1;
+				}
+				if(element.y<0)
+				{
+					element.y =0;
+					element.ySpd *=-1;
+				}
+				if(element.y>400)
+				{
+					element.y =400;
+					element.ySpd *=-1;
+				}
+			});
+
+			draw();
+		}
+		
+        //when a message is received from the server
+        //update our square to match the server's response
+        function update(data) {
+            //We know from the server that data is actually the server's master square object
+            /**This is where you would add the logic to check if the 
+               last updated time on the server message is older than our current object. 
+               If it's older than our current object, then we would want to avoid updating our
+               square's parameters with the message we received.
+            **/
+			console.log("update's data:");
+			//console.log(data);
+			squares=data;        
+			//step();
+            //redraw new data to the screen
+            //draw();
+        }
+
+        function init() {
+            canvas = document.querySelector("#canvas");
+            ctx = canvas.getContext("2d");
+			ctx.fillStyle = "#3070B0";
+			ctx.fillRect(0,0, canvas.width, canvas.height);
+			setInterval(updatePosition, 100);
+			step();
+			
+			canvas.onmousedown = function(e){
+				squares.forEach(function(element,index,array){
+					//if this is our square
+					if(index == myIndex){
+						if(element.x>e.x){
+							element.xSpd += 1.5;
+							console.log("case 1");
+						}else if(element.x<e.x){
+							element.xSpd += -1.5;
+							console.log("case 2");
+						}
+						if(element.y>e.y){
+							element.ySpd += 1.5;
+							console.log("case 3");
+						}else if(element.y<e.y){
+							element.ySpd += -1.5;
+							console.log("case 4");
+						}
+						if(Math.abs(element.xSpd)>10)
+						{
+							element.xSpd = Math.sign(element.xSpd) * 10;
+						}
+						if(Math.abs(element.ySpd)>10)
+						{
+							element.ySpd = Math.sign(element.ySpd) * 10;
+						}
+					}//end our square
+				});//end foreach loop
+				
+				socket.emit('objUpdate',squares);
+			}//end event listener
+			
+			
+            //Connect to our server (io added automatically by socket.io when embedding it in the HTTP app on the server side)
+            //This will return a new websocket connection. Every call to io.connect will return a new websocket connection 
+            //BUT not necessarily close the existing one. 
+            //You can absolutely use multiple websockets on the client, but you have to manage which ones are listening to which
+            //messages. In cases like this, you only need one. 
+            socket = io.connect();
+            
+            //When the socket connects successfully
+            socket.on('connect', function () {
+                //start our automated messages to the server every second. 
+                //This is just to show communication. Again, normally this would be invoked by a user action, not automated
+				squares[myIndex] = square;
+            });      
+            
+			socket.on('index', function(data) {
+				myIndex = data.index;
+			});
+			
+            //When our socket receives 'updatedMovement' messages from the server, call our update function
+            socket.on('update', update);
+        }
+		
+		function setCalls()
+		{
+			var time = new Date().getTime();
+			draws[time] = {x:100,y:100,width:100, height:100};
+			time = new Date().getTime();
+			var coords = {x: 0,y:0,width:100,height:100};
+			socket.emit('draw',{time:time,coords:coords});
+		}
+		
+		function handleMessage(data)
+		{
+			draws[data.time] = data.coords;
+			//draw();
+		}
+
+      window.onload = init;
+    </script>
+</head>
+<body>
+    <canvas id="canvas" height="500" width="500">Please use an HTML 5 browser</canvas>
+</body>
+</html>
