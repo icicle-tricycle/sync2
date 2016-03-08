@@ -131,9 +131,9 @@ function step()
 			element.x =0;
 			element.xSpd *=-1;
 		}
-		if(element.x>800)
+		if(element.x>700)
 		{
-			element.x =800;
+			element.x =700;
 			element.xSpd *=-1;
 		}
 		if(element.y<0)
@@ -141,9 +141,9 @@ function step()
 			element.y =0;
 			element.ySpd *=-1;
 		}
-		if(element.y>800)
+		if(element.y>700)
 		{
-			element.y =800;
+			element.y =700;
 			element.ySpd *=-1;
 		}
 	});
