@@ -100,9 +100,9 @@
 					element.x =0;
 					element.xSpd *=-1;
 				}
-				if(element.x>400)
+				if(element.x>800)
 				{
-					element.x =400;
+					element.x =800;
 					element.xSpd *=-1;
 				}
 				if(element.y<0)
@@ -110,9 +110,9 @@
 					element.y =0;
 					element.ySpd *=-1;
 				}
-				if(element.y>400)
+				if(element.y>800)
 				{
-					element.y =400;
+					element.y =800;
 					element.ySpd *=-1;
 				}
 			});
@@ -219,6 +219,9 @@
     </script>
 </head>
 <body>
-    <canvas id="canvas" height="500" width="500">Please use an HTML 5 browser</canvas>
+    <canvas id="canvas" height="800" width="800">Please use an HTML 5 browser</canvas>
+	<p>
+		Click in the canvas to push your square!
+	</p>
 </body>
 </html>
